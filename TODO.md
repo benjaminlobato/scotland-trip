@@ -86,6 +86,7 @@
 
 ## UI Improvements
 
+- [ ] Add map scale indicator
 - [ ] Layer control panel (collapse all toggles into one menu)
 - [ ] Filter landmarks by type
 - [ ] Save favorite pins to local storage

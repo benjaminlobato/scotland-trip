@@ -381,10 +381,96 @@ function SearchBox({ onSelectLocation }) {
   )
 }
 
-function BirdLoader({ onBirdsLoaded, onLoadingChange }) {
+function BirdPopup({ bird }) {
+  const [image, setImage] = useState(null)
+  const [audioUrl, setAudioUrl] = useState(null)
+  const [playing, setPlaying] = useState(false)
+  const audioRef = useState(() => new Audio())[0]
+
+  useEffect(() => {
+    // Fetch Wikipedia image
+    fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(bird.comName)}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data?.thumbnail?.source) setImage(data.thumbnail.source)
+      })
+      .catch(() => {})
+
+    // Fetch bird call from Macaulay Library using species code
+    fetch(`https://search.macaulaylibrary.org/api/v1/search?taxonCode=${bird.speciesCode}&mediaType=audio&count=1`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data?.results?.content?.[0]?.mediaUrl) {
+          setAudioUrl(data.results.content[0].mediaUrl)
+        }
+      })
+      .catch(() => {})
+
+    return () => {
+      audioRef.pause()
+      audioRef.src = ''
+    }
+  }, [bird.comName, bird.speciesCode, audioRef])
+
+  function togglePlay() {
+    if (playing) {
+      audioRef.pause()
+      setPlaying(false)
+    } else if (audioUrl) {
+      audioRef.src = audioUrl
+      audioRef.play()
+      setPlaying(true)
+      audioRef.onended = () => setPlaying(false)
+    }
+  }
+
+  return (
+    <div className="text-sm min-w-[180px]">
+      {image && <img src={image} alt={bird.comName} className="w-full h-24 object-contain rounded mb-2" />}
+      <div className="flex items-center gap-2">
+        <div className="font-bold text-purple-700">{bird.comName}</div>
+        {audioUrl && (
+          <button
+            onClick={togglePlay}
+            className={`w-6 h-6 rounded-full flex items-center justify-center text-sm ${playing ? 'bg-purple-600 text-white' : 'bg-purple-100 text-purple-600 hover:bg-purple-200'}`}
+            title="Play bird call"
+          >
+            {playing ? '⏹' : '🎵'}
+          </button>
+        )}
+      </div>
+      <div className="text-xs text-slate-500 italic">{bird.sciName}</div>
+      <div className="text-xs text-slate-600 mt-1">{bird.locName}</div>
+      <div className="text-xs text-slate-400">{bird.obsDt}</div>
+      {bird.howMany && <div className="text-xs text-slate-600">Count: {bird.howMany}</div>}
+      <div className="flex gap-2 mt-2">
+        <a
+          href={`https://ebird.org/species/${bird.speciesCode}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-xs text-blue-600 hover:underline"
+        >
+          eBird →
+        </a>
+        <a
+          href={`https://www.google.com/search?tbm=isch&q=${encodeURIComponent(bird.comName + ' bird')}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-xs text-blue-600 hover:underline"
+        >
+          Images →
+        </a>
+      </div>
+    </div>
+  )
+}
+
+function BirdLoader({ onComplete }) {
   const map = useMap()
 
   useEffect(() => {
+    let cancelled = false
+
     async function fetchBirds() {
       const center = map.getCenter()
       const bounds = map.getBounds()
@@ -393,22 +479,22 @@ function BirdLoader({ onBirdsLoaded, onLoadingChange }) {
       const latDiff = bounds.getNorth() - bounds.getSouth()
       const dist = Math.min(50, Math.max(10, Math.round(latDiff * 55))) // ~55km per degree lat
 
-      onLoadingChange(true)
       try {
         const response = await fetch(
-          `https://api.ebird.org/v2/data/obs/geo/recent?lat=${center.lat}&lng=${center.lng}&dist=${dist}&maxResults=200`,
+          `https://api.ebird.org/v2/data/obs/geo/recent?lat=${center.lat}&lng=${center.lng}&dist=${dist}&back=30&maxResults=200`,
           { headers: { 'X-eBirdApiToken': EBIRD_API_KEY } }
         )
         const data = await response.json()
-        onBirdsLoaded(data || [])
+        if (!cancelled) onComplete(data || [])
       } catch (err) {
-        onBirdsLoaded([])
+        if (!cancelled) onComplete([])
       }
-      onLoadingChange(false)
     }
 
     fetchBirds()
-  }, [map, onBirdsLoaded, onLoadingChange])
+
+    return () => { cancelled = true }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   return null
 }
@@ -425,7 +511,6 @@ function App() {
   const [mode, setMode] = useState('select') // 'select' or 'create'
   const [birds, setBirds] = useState([])
   const [birdsLoading, setBirdsLoading] = useState(false)
-  const [loadBirds, setLoadBirds] = useState(false) // triggers fetch
 
   const fetchPins = useCallback(async () => {
     const { data } = await supabase.from('pins').select('*').order('created_at', { ascending: false })
@@ -505,10 +590,9 @@ function App() {
             opacity={0.7}
           />
         )}
-        {loadBirds && (
+        {birdsLoading && (
           <BirdLoader
-            onBirdsLoaded={(data) => { setBirds(data); setLoadBirds(false) }}
-            onLoadingChange={setBirdsLoading}
+            onComplete={(data) => { setBirds(data); setBirdsLoading(false) }}
           />
         )}
         {birds.map((bird, i) => (
@@ -518,13 +602,7 @@ function App() {
             icon={birdIcon}
           >
             <Popup>
-              <div className="text-sm">
-                <div className="font-bold text-purple-700">{bird.comName}</div>
-                <div className="text-xs text-slate-500 italic">{bird.sciName}</div>
-                <div className="text-xs text-slate-600 mt-1">{bird.locName}</div>
-                <div className="text-xs text-slate-400">{bird.obsDt}</div>
-                {bird.howMany && <div className="text-xs text-slate-600">Count: {bird.howMany}</div>}
-              </div>
+              <BirdPopup bird={bird} />
             </Popup>
           </Marker>
         ))}
@@ -625,7 +703,7 @@ function App() {
             Trails {showTrails ? 'ON' : 'OFF'}
           </button>
           <button
-            onClick={() => setLoadBirds(true)}
+            onClick={() => birds.length > 0 ? setBirds([]) : setBirdsLoading(true)}
             disabled={birdsLoading}
             className={`flex items-center gap-1 px-1.5 py-0.5 rounded ${birds.length > 0 ? 'bg-purple-100 text-purple-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'} disabled:opacity-50`}
           >
@@ -637,18 +715,10 @@ function App() {
             ) : (
               <>
                 <span className="text-sm">🐦</span>
-                {birds.length > 0 ? `Birds (${birds.length})` : 'Load Birds'}
+                {birds.length > 0 ? 'Bye Birds' : 'Hi Birds'}
               </>
             )}
           </button>
-          {birds.length > 0 && (
-            <button
-              onClick={() => setBirds([])}
-              className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 hover:bg-slate-200 text-xs"
-            >
-              Clear
-            </button>
-          )}
         </div>
       </div>
 
