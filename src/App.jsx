@@ -625,7 +625,7 @@ function App() {
               <div className="text-sm">
                 <div className="font-bold text-orange-600">{park.name}</div>
                 <a
-                  href={`https://www.google.com/maps/search/?api=1&query=${park.lat},${park.lng}`}
+                  href={`https://www.google.com/maps/@${park.lat},${park.lng},18z/data=!3m1!1e3`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-xs text-blue-600 hover:underline"
