@@ -6,6 +6,7 @@ import { supabase } from './supabase'
 import ATLAS_OBSCURA_PLACES from './atlasObscuraData'
 import DOG_PARKS from './dogParksData'
 import HERITAGE_AUDIO from './heritageAudioData'
+import YOUTUBE_VIDEOS from './youtubeVideosData'
 
 const PASSWORD = import.meta.env.VITE_APP_PASSWORD
 const EBIRD_API_KEY = import.meta.env.VITE_EBIRD_API_KEY
@@ -58,6 +59,20 @@ const stayIcon = L.divIcon({
 const audioIcon = L.divIcon({
   className: '',
   html: `<div style="background:#dc2626;width:18px;height:18px;border-radius:50%;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;font-size:10px;">🎙️</div>`,
+  iconSize: [18, 18],
+  iconAnchor: [9, 9],
+})
+
+const castleIcon = L.divIcon({
+  className: '',
+  html: `<div style="background:#7c3aed;width:18px;height:18px;border-radius:50%;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;font-size:10px;">🏰</div>`,
+  iconSize: [18, 18],
+  iconAnchor: [9, 9],
+})
+
+const videoIcon = L.divIcon({
+  className: '',
+  html: `<div style="background:#ef4444;width:18px;height:18px;border-radius:50%;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;font-size:10px;">▶️</div>`,
   iconSize: [18, 18],
   iconAnchor: [9, 9],
 })
@@ -404,6 +419,54 @@ function SearchBox({ onSelectLocation }) {
   )
 }
 
+function CastlePopup({ castle }) {
+  const [image, setImage] = useState(null)
+
+  useEffect(() => {
+    // Try Wikipedia article first, then fall back to castle name search
+    const wikiTitle = castle.wikipedia?.replace(/^en:/, '') || castle.name
+    fetch(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(wikiTitle)}`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data?.thumbnail?.source) setImage(data.thumbnail.source)
+      })
+      .catch(() => {})
+  }, [castle.wikipedia, castle.name])
+
+  return (
+    <div className="text-sm min-w-[180px]">
+      {image && <img src={image} alt={castle.name} className="w-full h-24 object-cover rounded mb-2" />}
+      <div className="font-bold text-violet-700">{castle.name}</div>
+      {castle.ruins && <div className="text-xs text-slate-500 italic">Ruins</div>}
+      <div className="flex gap-2 mt-1">
+        {castle.wikipedia && (
+          <a
+            href={`https://en.wikipedia.org/wiki/${castle.wikipedia.replace(/^en:/, '')}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs text-blue-600 hover:underline"
+          >
+            Wikipedia
+          </a>
+        )}
+        {castle.website && (
+          <a href={castle.website} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline">
+            Website
+          </a>
+        )}
+        <a
+          href={`https://www.google.com/search?q=${encodeURIComponent(castle.name + ' Scotland')}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-xs text-blue-600 hover:underline"
+        >
+          Search
+        </a>
+      </div>
+    </div>
+  )
+}
+
 function BirdPopup({ bird }) {
   const [image, setImage] = useState(null)
   const [audioUrl, setAudioUrl] = useState(null)
@@ -568,6 +631,53 @@ function AccommodationLoader({ onComplete }) {
   return null
 }
 
+function CastleLoader({ onComplete }) {
+  const map = useMap()
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function fetchCastles() {
+      const bounds = map.getBounds()
+      const bbox = `${bounds.getSouth()},${bounds.getWest()},${bounds.getNorth()},${bounds.getEast()}`
+
+      const query = `[out:json][timeout:30];
+        (
+          node["historic"="castle"](${bbox});
+          way["historic"="castle"](${bbox});
+          relation["historic"="castle"](${bbox});
+        );
+        out center tags 500;`
+
+      try {
+        const response = await fetch('https://overpass-api.de/api/interpreter', {
+          method: 'POST',
+          body: query
+        })
+        const data = await response.json()
+        const castles = data.elements?.map(el => ({
+          name: el.tags?.name || 'Unnamed Castle',
+          ruins: el.tags?.ruins === 'yes' || el.tags?.castle_type === 'ruins',
+          wikipedia: el.tags?.wikipedia,
+          website: el.tags?.website,
+          wikidata: el.tags?.wikidata,
+          lat: el.lat || el.center?.lat,
+          lng: el.lon || el.center?.lon,
+        })).filter(c => c.lat && c.lng) || []
+        if (!cancelled) onComplete(castles)
+      } catch (err) {
+        if (!cancelled) onComplete([])
+      }
+    }
+
+    fetchCastles()
+
+    return () => { cancelled = true }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  return null
+}
+
 function App() {
   const [authed, setAuthed] = useState(localStorage.getItem('scotland-auth') === 'true')
   const [pins, setPins] = useState([])
@@ -583,7 +693,10 @@ function App() {
   const [showDogs, setShowDogs] = useState(false)
   const [accommodation, setAccommodation] = useState([])
   const [accommodationLoading, setAccommodationLoading] = useState(false)
+  const [castles, setCastles] = useState([])
+  const [castlesLoading, setCastlesLoading] = useState(false)
   const [showAudio, setShowAudio] = useState(true)
+  const [showVideos, setShowVideos] = useState(false)
   const [legendOpen, setLegendOpen] = useState(true)
 
   const fetchPins = useCallback(async () => {
@@ -737,6 +850,22 @@ function App() {
             </Popup>
           </Marker>
         ))}
+        {castlesLoading && (
+          <CastleLoader
+            onComplete={(data) => { setCastles(data); setCastlesLoading(false) }}
+          />
+        )}
+        {castles.map((castle, i) => (
+          <Marker
+            key={`castle-${i}-${castle.lat}`}
+            position={[castle.lat, castle.lng]}
+            icon={castleIcon}
+          >
+            <Popup>
+              <CastlePopup castle={castle} />
+            </Popup>
+          </Marker>
+        ))}
         {showAudio && HERITAGE_AUDIO.map((audio, i) => (
           <Marker
             key={`audio-${i}`}
@@ -768,6 +897,30 @@ function App() {
                     🎧 Listen →
                   </a>
                 )}
+              </div>
+            </Popup>
+          </Marker>
+        ))}
+        {showVideos && YOUTUBE_VIDEOS.map((video, i) => (
+          <Marker
+            key={`video-${i}`}
+            position={[video.lat, video.lng]}
+            icon={videoIcon}
+          >
+            <Popup minWidth={280}>
+              <div className="text-sm">
+                <div className="font-bold text-red-600">{video.title}</div>
+                <div className="text-xs text-slate-500">{video.location}</div>
+                <div className="text-xs text-slate-400 mt-1">{video.source}</div>
+                <iframe
+                  className="mt-2 rounded"
+                  width="260"
+                  height="146"
+                  src={`https://www.youtube.com/embed/${video.youtubeId}`}
+                  frameBorder="0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
               </div>
             </Popup>
           </Marker>
@@ -914,6 +1067,23 @@ function App() {
                 className={`flex items-center gap-1.5 px-2 py-1.5 rounded text-left ${showAudio ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-400'}`}
               >
                 🎙️ Audio
+              </button>
+              <button
+                onClick={() => castles.length > 0 ? setCastles([]) : setCastlesLoading(true)}
+                disabled={castlesLoading}
+                className={`flex items-center gap-1.5 px-2 py-1.5 rounded text-left ${castles.length > 0 ? 'bg-violet-100 text-violet-700' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'} disabled:opacity-50`}
+              >
+                {castlesLoading ? (
+                  <><span className="w-3 h-3 border-2 border-violet-600 border-t-transparent rounded-full animate-spin" /> Loading</>
+                ) : (
+                  <>🏰 {castles.length > 0 ? `Castles (${castles.length})` : 'Castles'}</>
+                )}
+              </button>
+              <button
+                onClick={() => setShowVideos(s => !s)}
+                className={`flex items-center gap-1.5 px-2 py-1.5 rounded text-left ${showVideos ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-400'}`}
+              >
+                ▶️ Videos
               </button>
             </div>
           </div>

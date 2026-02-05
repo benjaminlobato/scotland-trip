@@ -137,6 +137,78 @@ const HERITAGE_AUDIO = [
     url: "https://www.tobarandualchais.co.uk/track/27427",
     source: "Tobar an Dualchais"
   },
+  {
+    title: "Dull Parish Recording",
+    location: "Dull, Perthshire",
+    lat: 56.6017,
+    lng: -4.0514,
+    url: "https://www.tobarandualchais.co.uk/track/17929",
+    source: "Tobar an Dualchais"
+  },
+  {
+    title: "Yell Parish Recording",
+    location: "Yell, Shetland",
+    lat: 60.6019,
+    lng: -1.0728,
+    url: "https://www.tobarandualchais.co.uk/track/81380",
+    source: "Tobar an Dualchais"
+  },
+  {
+    title: "Harris Parish Recording",
+    location: "Harris, Outer Hebrides",
+    lat: 57.9000,
+    lng: -6.8000,
+    url: "https://www.tobarandualchais.co.uk/track/58910",
+    source: "Tobar an Dualchais"
+  },
+  {
+    title: "Loch Gruinart Recording",
+    location: "Loch Gruinart, Islay",
+    lat: 55.8500,
+    lng: -6.3500,
+    url: "https://www.tobarandualchais.co.uk/track/60196",
+    source: "Tobar an Dualchais"
+  },
+  {
+    title: "Gifford Recording",
+    location: "Gifford, East Lothian",
+    lat: 55.9042,
+    lng: -2.7500,
+    url: "https://www.tobarandualchais.co.uk/track/30699",
+    source: "Tobar an Dualchais"
+  },
+  {
+    title: "Fetlar Recording",
+    location: "Fetlar, Shetland",
+    lat: 60.6100,
+    lng: -0.8700,
+    url: "https://www.tobarandualchais.co.uk/track/89944",
+    source: "Tobar an Dualchais"
+  },
+  {
+    title: "Oban Recording",
+    location: "Oban, Argyll",
+    lat: 56.4150,
+    lng: -5.4700,
+    url: "https://www.tobarandualchais.co.uk/track/89364",
+    source: "Tobar an Dualchais"
+  },
+  {
+    title: "Kerrera Recording",
+    location: "Kerrera, Argyll",
+    lat: 56.3900,
+    lng: -5.5300,
+    url: "https://www.tobarandualchais.co.uk/track/51438",
+    source: "Tobar an Dualchais"
+  },
+  {
+    title: "Smoo Cave Recording",
+    location: "Smoo Cave, Durness",
+    lat: 58.5630,
+    lng: -4.7230,
+    url: "https://www.tobarandualchais.co.uk/track/9924",
+    source: "Tobar an Dualchais"
+  },
 ]
 
 export default HERITAGE_AUDIO
