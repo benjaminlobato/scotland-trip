@@ -4,6 +4,7 @@ import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { supabase } from './supabase'
 import ATLAS_OBSCURA_PLACES from './atlasObscuraData'
+import DOG_PARKS from './dogParksData'
 
 const PASSWORD = import.meta.env.VITE_APP_PASSWORD
 const EBIRD_API_KEY = import.meta.env.VITE_EBIRD_API_KEY
@@ -35,6 +36,13 @@ const landmarkIcon = L.divIcon({
 const birdIcon = L.divIcon({
   className: '',
   html: `<div style="background:#8b5cf6;width:18px;height:18px;border-radius:50%;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;font-size:10px;">🐦</div>`,
+  iconSize: [18, 18],
+  iconAnchor: [9, 9],
+})
+
+const dogIcon = L.divIcon({
+  className: '',
+  html: `<div style="background:#f97316;width:18px;height:18px;border-radius:50%;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;font-size:10px;">🐕</div>`,
   iconSize: [18, 18],
   iconAnchor: [9, 9],
 })
@@ -511,6 +519,7 @@ function App() {
   const [mode, setMode] = useState('select') // 'select' or 'create'
   const [birds, setBirds] = useState([])
   const [birdsLoading, setBirdsLoading] = useState(false)
+  const [showDogs, setShowDogs] = useState(false)
 
   const fetchPins = useCallback(async () => {
     const { data } = await supabase.from('pins').select('*').order('created_at', { ascending: false })
@@ -603,6 +612,27 @@ function App() {
           >
             <Popup>
               <BirdPopup bird={bird} />
+            </Popup>
+          </Marker>
+        ))}
+        {showDogs && DOG_PARKS.map((park, i) => (
+          <Marker
+            key={`dog-${i}`}
+            position={[park.lat, park.lng]}
+            icon={dogIcon}
+          >
+            <Popup>
+              <div className="text-sm">
+                <div className="font-bold text-orange-600">{park.name}</div>
+                <a
+                  href={`https://www.google.com/maps/search/?api=1&query=${park.lat},${park.lng}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-blue-600 hover:underline"
+                >
+                  Directions
+                </a>
+              </div>
             </Popup>
           </Marker>
         ))}
@@ -718,6 +748,13 @@ function App() {
                 {birds.length > 0 ? 'Bye Birds' : 'Hi Birds'}
               </>
             )}
+          </button>
+          <button
+            onClick={() => setShowDogs(s => !s)}
+            className={`flex items-center gap-1 px-1.5 py-0.5 rounded ${showDogs ? 'bg-orange-100 text-orange-700' : 'bg-slate-100 text-slate-400'}`}
+          >
+            <span className="text-sm">🐕</span>
+            Dogs {showDogs ? 'ON' : 'OFF'}
           </button>
         </div>
       </div>
