@@ -145,6 +145,8 @@ const ATLAS_OBSCURA_PLACES = [
   { name: "Massacre of Glencoe Monument", lat: 56.68242, lng: -5.09511, description: "A solemn memorial in a majestic setting honoring a 1692 tragedy.", url: "https://www.atlasobscura.com/places/massacre-of-glencoe-monument" },
   { name: "Ralston Cairn", lat: 56.664142, lng: -4.967735, description: "A lonely memorial atop a wind-swept crag to a beloved hiker.", url: "https://www.atlasobscura.com/places/ralston-cairn" },
   { name: "The Meeting of Three Waters", lat: 56.662507, lng: -4.966419, description: "Featured in Monty Python and the Holy Grail as the Bridge of Death.", url: "https://www.atlasobscura.com/places/the-meeting-of-three-waters" },
+  { name: "Grey Mare's Tail Waterfall", lat: 56.7190261, lng: -4.9633921, description: "A dramatic 300-foot waterfall cascading down the hillside near Kinlochleven.", url: "" },
+  { name: "Falls of Glencoe", lat: 56.6622393, lng: -4.9660004, description: "Scenic waterfall in Glencoe village, easily accessible from the main road.", url: "" },
   { name: "Glenfinnan Viaduct", lat: 56.876323, lng: -5.431851, description: "An impressive concrete viaduct, now famous as the Harry Potter bridge.", url: "https://www.atlasobscura.com/places/glenfinnan-viaduct" },
   { name: "The Leaning Tower of Glenfinnan", lat: 56.86908, lng: -5.439247, description: "A Scottish monument that is slightly off-kilter upon close inspection.", url: "https://www.atlasobscura.com/places/the-leaning-tower-of-glenfinnan-glenfinnan-scotland" },
   { name: "Glengarry Viewpoint", lat: 57.08186, lng: -4.953083, description: "From this viewpoint, the loch appears to take the shape of mainland Scotland.", url: "https://www.atlasobscura.com/places/glengarry-viewpoint" },

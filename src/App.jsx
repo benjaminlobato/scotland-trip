@@ -1,10 +1,9 @@
 import { useState, useEffect, useCallback } from 'react'
-import { MapContainer, TileLayer, Marker, Popup, useMapEvents, GeoJSON } from 'react-leaflet'
+import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap, CircleMarker } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { supabase } from './supabase'
 import ATLAS_OBSCURA_PLACES from './atlasObscuraData'
-import trailsData from './trailsData.json'
 
 const PASSWORD = import.meta.env.VITE_APP_PASSWORD
 
@@ -25,9 +24,9 @@ function makeIcon(color) {
   })
 }
 
-const atlasIcon = L.divIcon({
+const landmarkIcon = L.divIcon({
   className: '',
-  html: `<div style="background:#e11d48;width:20px;height:20px;border-radius:4px;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;color:white;font-size:11px;font-weight:bold;">A</div>`,
+  html: `<div style="background:#e11d48;width:20px;height:20px;border-radius:4px;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);"></div>`,
   iconSize: [20, 20],
   iconAnchor: [10, 10],
 })
@@ -148,11 +147,13 @@ function AddPinForm({ latlng, onSave, onCancel }) {
   )
 }
 
-function PinDetail({ pin, onClose }) {
+function PinDetail({ pin, onClose, onDelete }) {
   const isAtlas = pin.category === 'atlas'
-  const cat = isAtlas ? { label: 'Atlas Obscura', color: '#e11d48' } : (CATEGORIES[pin.category] || CATEGORIES.other)
+  const cat = isAtlas ? { label: 'Landmark', color: '#e11d48' } : (CATEGORIES[pin.category] || CATEGORIES.other)
   const [wiki, setWiki] = useState(null)
   const [wikiLoading, setWikiLoading] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   useEffect(() => {
     if (!isAtlas) return
@@ -168,6 +169,14 @@ function PinDetail({ pin, onClose }) {
       .catch(() => setWiki(null))
       .finally(() => setWikiLoading(false))
   }, [pin.name, isAtlas])
+
+  async function handleDelete() {
+    if (!pin.id) return
+    setDeleting(true)
+    const { error } = await supabase.from('pins').delete().eq('id', pin.id)
+    setDeleting(false)
+    if (!error) onDelete()
+  }
 
   return (
     <div className="absolute top-0 right-0 h-full w-80 bg-white shadow-lg z-[1000] p-5 overflow-y-auto">
@@ -195,14 +204,173 @@ function PinDetail({ pin, onClose }) {
           Wikipedia →
         </a>
       )}
-      {pin.added_by && <p className="text-sm text-slate-400">Added by {pin.added_by}</p>}
+      {pin.added_by && <p className="text-sm text-slate-400 mb-4">Added by {pin.added_by}</p>}
+
+      {/* Delete button for user-created pins */}
+      {pin.id && !isAtlas && (
+        <div className="mt-4 pt-4 border-t border-slate-200">
+          {!confirmDelete ? (
+            <button
+              onClick={() => setConfirmDelete(true)}
+              className="text-sm text-red-500 hover:text-red-700"
+            >
+              Delete pin
+            </button>
+          ) : (
+            <div className="flex gap-2">
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="flex-1 bg-red-500 text-white text-sm py-1.5 rounded hover:bg-red-600 disabled:opacity-50"
+              >
+                {deleting ? 'Deleting...' : 'Confirm'}
+              </button>
+              <button
+                onClick={() => setConfirmDelete(false)}
+                className="flex-1 bg-slate-200 text-slate-700 text-sm py-1.5 rounded hover:bg-slate-300"
+              >
+                Cancel
+              </button>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
 
-function MapClickHandler({ onClick }) {
-  useMapEvents({ click: (e) => onClick(e.latlng) })
+function MapClickHandler({ onClick, showTrails, onTrailFound, onTrailLoading }) {
+  const map = useMap()
+
+  useMapEvents({
+    click: async (e) => {
+      // If trails are visible and zoomed in enough, check for trail at click point
+      if (showTrails && map.getZoom() >= 12) {
+        const { lat, lng } = e.latlng
+        const radius = 50 // meters
+
+        onTrailLoading(e.latlng)
+
+        try {
+          const query = `[out:json][timeout:10];
+            way["highway"~"path|footway|track"]["name"](around:${radius},${lat},${lng});
+            out tags 1;
+            relation["route"="hiking"](around:${radius},${lat},${lng});
+            out tags 3;`
+
+          const response = await fetch('https://overpass-api.de/api/interpreter', {
+            method: 'POST',
+            body: query
+          })
+          const data = await response.json()
+
+          const trails = data.elements
+            ?.filter(el => el.tags?.name)
+            ?.map(el => el.tags.name)
+            ?.filter((name, i, arr) => arr.indexOf(name) === i) // unique
+
+          onTrailLoading(null)
+
+          if (trails && trails.length > 0) {
+            onTrailFound(e.latlng, trails)
+            return // Don't trigger normal click handler
+          }
+        } catch (err) {
+          onTrailLoading(null)
+          // Ignore errors, fall through to normal click
+        }
+      }
+
+      onClick(e.latlng)
+    }
+  })
   return null
+}
+
+function SearchBox({ onSelectLocation }) {
+  const map = useMap()
+  const [query, setQuery] = useState('')
+  const [results, setResults] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [showResults, setShowResults] = useState(false)
+
+  useEffect(() => {
+    if (query.length < 2) {
+      setResults([])
+      return
+    }
+
+    const timer = setTimeout(async () => {
+      setLoading(true)
+      try {
+        const response = await fetch(
+          `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&lat=56.8&lon=-4.2&limit=6&lang=en`
+        )
+        const data = await response.json()
+        setResults(data.features || [])
+      } catch (err) {
+        setResults([])
+      }
+      setLoading(false)
+    }, 300)
+
+    return () => clearTimeout(timer)
+  }, [query])
+
+  function handleSelect(feature) {
+    const [lng, lat] = feature.geometry.coordinates
+    map.flyTo([lat, lng], 14)
+    setQuery('')
+    setResults([])
+    setShowResults(false)
+    onSelectLocation({ lat, lng })
+  }
+
+  function formatResult(feature) {
+    const p = feature.properties
+    const parts = [p.name]
+    if (p.city && p.city !== p.name) parts.push(p.city)
+    if (p.county) parts.push(p.county)
+    if (p.country) parts.push(p.country)
+    return parts.slice(0, 3).join(', ')
+  }
+
+  return (
+    <div className="absolute top-4 left-14 z-[1000] w-72">
+      <div className="relative">
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => { setQuery(e.target.value); setShowResults(true) }}
+          onFocus={() => setShowResults(true)}
+          placeholder="Search places..."
+          className="w-full px-4 py-2 bg-white rounded-lg shadow border-0 text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+        {loading && (
+          <div className="absolute right-3 top-2.5 text-slate-400 text-sm">...</div>
+        )}
+      </div>
+      {showResults && results.length > 0 && (
+        <div className="mt-1 bg-white rounded-lg shadow-lg overflow-hidden">
+          {results.map((feature, i) => (
+            <button
+              key={i}
+              onClick={() => handleSelect(feature)}
+              className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-100 border-b border-slate-100 last:border-0"
+            >
+              <div className="font-medium">{feature.properties.name}</div>
+              <div className="text-xs text-slate-500">{formatResult(feature)}</div>
+            </button>
+          ))}
+        </div>
+      )}
+      {showResults && query.length >= 2 && !loading && results.length === 0 && (
+        <div className="mt-1 bg-white rounded-lg shadow-lg px-4 py-2 text-sm text-slate-500">
+          No results found
+        </div>
+      )}
+    </div>
+  )
 }
 
 function App() {
@@ -212,6 +380,9 @@ function App() {
   const [selectedPin, setSelectedPin] = useState(null)
   const [showAtlas, setShowAtlas] = useState(true)
   const [showTrails, setShowTrails] = useState(true)
+  const [trailPopup, setTrailPopup] = useState(null) // { latlng, trails }
+  const [trailLoading, setTrailLoading] = useState(null) // latlng while loading
+  const [mode, setMode] = useState('select') // 'select' or 'create'
 
   const fetchPins = useCallback(async () => {
     const { data } = await supabase.from('pins').select('*').order('created_at', { ascending: false })
@@ -226,7 +397,12 @@ function App() {
 
   function handleMapClick(latlng) {
     setSelectedPin(null)
-    setAddingAt(latlng)
+    setTrailPopup(null)
+    if (mode === 'create') {
+      setAddingAt(latlng)
+    } else {
+      setAddingAt(null)
+    }
   }
 
   function handlePinClick(pin) {
@@ -245,7 +421,21 @@ function App() {
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
-        <MapClickHandler onClick={handleMapClick} />
+        <SearchBox onSelectLocation={(latlng) => { setSelectedPin(null); setAddingAt(latlng) }} />
+        <MapClickHandler
+          onClick={handleMapClick}
+          showTrails={showTrails}
+          onTrailLoading={(latlng) => {
+            setTrailPopup(null)
+            setTrailLoading(latlng)
+          }}
+          onTrailFound={(latlng, trails) => {
+            setAddingAt(null)
+            setSelectedPin(null)
+            setTrailLoading(null)
+            setTrailPopup({ latlng, trails })
+          }}
+        />
         {pins.map(pin => (
           <Marker
             key={pin.id}
@@ -258,7 +448,7 @@ function App() {
           <Marker
             key={`atlas-${i}`}
             position={[place.lat, place.lng]}
-            icon={atlasIcon}
+            icon={landmarkIcon}
             eventHandlers={{ click: () => {
               setAddingAt(null)
               setSelectedPin({ name: place.name, description: place.description, category: 'atlas', url: place.url })
@@ -266,20 +456,84 @@ function App() {
           />
         ))}
         {showTrails && (
-          <GeoJSON
-            key="trails"
-            data={trailsData}
-            style={(feature) => ({
-              color: '#16a34a',
-              weight: 3,
-              opacity: 0.8,
-            })}
-            onEachFeature={(feature, layer) => {
-              layer.bindPopup(`<strong>${feature.properties.name}</strong>`)
-            }}
+          <TileLayer
+            url="https://tile.waymarkedtrails.org/hiking/{z}/{x}/{y}.png"
+            attribution='&copy; <a href="https://waymarkedtrails.org">Waymarked Trails</a>'
+            opacity={0.7}
           />
         )}
+        {trailLoading && (
+          <CircleMarker
+            center={[trailLoading.lat, trailLoading.lng]}
+            radius={12}
+            fillColor="#16a34a"
+            fillOpacity={0.3}
+            color="#16a34a"
+            weight={2}
+            dashArray="4"
+            eventHandlers={{ add: (e) => e.target.openPopup() }}
+          >
+            <Popup autoClose={false} closeOnClick={false}>
+              <div className="text-sm text-slate-500 flex items-center gap-2">
+                <span className="inline-block w-4 h-4 border-2 border-green-600 border-t-transparent rounded-full animate-spin"></span>
+                Looking up trail...
+              </div>
+            </Popup>
+          </CircleMarker>
+        )}
+        {trailPopup && (
+          <CircleMarker
+            center={[trailPopup.latlng.lat, trailPopup.latlng.lng]}
+            radius={8}
+            fillColor="#16a34a"
+            fillOpacity={0.8}
+            color="white"
+            weight={2}
+            eventHandlers={{ add: (e) => e.target.openPopup() }}
+          >
+            <Popup>
+              <div className="text-sm">
+                <div className="font-bold text-green-700 mb-1">Trail{trailPopup.trails.length > 1 ? 's' : ''}</div>
+                {trailPopup.trails.map((name, i) => (
+                  <a
+                    key={i}
+                    href={`https://www.google.com/search?q=${encodeURIComponent(name + ' trail Scotland')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block text-blue-600 hover:text-blue-800 hover:underline"
+                  >
+                    {name}
+                  </a>
+                ))}
+              </div>
+            </Popup>
+          </CircleMarker>
+        )}
       </MapContainer>
+
+      {/* Mode Toggle */}
+      <div className="absolute top-4 right-4 z-[1000] flex gap-2">
+        <button
+          onClick={() => { setMode('select'); setAddingAt(null) }}
+          className={`px-3 py-2 rounded-lg shadow text-sm font-medium transition-colors ${
+            mode === 'select'
+              ? 'bg-blue-600 text-white'
+              : 'bg-white text-slate-600 hover:bg-slate-100'
+          }`}
+        >
+          Select
+        </button>
+        <button
+          onClick={() => setMode('create')}
+          className={`px-3 py-2 rounded-lg shadow text-sm font-medium transition-colors ${
+            mode === 'create'
+              ? 'bg-blue-600 text-white'
+              : 'bg-white text-slate-600 hover:bg-slate-100'
+          }`}
+        >
+          + Add Pin
+        </button>
+      </div>
 
       {/* Legend */}
       <div className="absolute bottom-5 left-5 bg-white/90 rounded-lg shadow px-3 py-2 z-[1000]">
@@ -294,8 +548,8 @@ function App() {
             onClick={() => setShowAtlas(s => !s)}
             className={`flex items-center gap-1 px-1.5 py-0.5 rounded ${showAtlas ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-400'}`}
           >
-            <span className="w-2.5 h-2.5 rounded-sm inline-block text-[8px] font-bold leading-none text-center" style={{ background: '#e11d48', color: 'white' }}>A</span>
-            Atlas Obscura {showAtlas ? 'ON' : 'OFF'}
+            <span className="w-2.5 h-2.5 rounded-sm inline-block" style={{ background: '#e11d48' }} />
+            Landmarks {showAtlas ? 'ON' : 'OFF'}
           </button>
           <button
             onClick={() => setShowTrails(s => !s)}
@@ -310,13 +564,17 @@ function App() {
       {addingAt && (
         <AddPinForm
           latlng={addingAt}
-          onSave={() => { setAddingAt(null); fetchPins() }}
-          onCancel={() => setAddingAt(null)}
+          onSave={() => { setAddingAt(null); setMode('select'); fetchPins() }}
+          onCancel={() => { setAddingAt(null); setMode('select') }}
         />
       )}
 
       {selectedPin && (
-        <PinDetail pin={selectedPin} onClose={() => setSelectedPin(null)} />
+        <PinDetail
+          pin={selectedPin}
+          onClose={() => setSelectedPin(null)}
+          onDelete={() => { setSelectedPin(null); fetchPins() }}
+        />
       )}
     </div>
   )
