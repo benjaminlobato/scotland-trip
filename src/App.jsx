@@ -6,6 +6,7 @@ import { supabase } from './supabase'
 import ATLAS_OBSCURA_PLACES from './atlasObscuraData'
 
 const PASSWORD = import.meta.env.VITE_APP_PASSWORD
+const EBIRD_API_KEY = import.meta.env.VITE_EBIRD_API_KEY
 
 const CATEGORIES = {
   food: { label: 'Food', color: '#ef4444' },
@@ -29,6 +30,13 @@ const landmarkIcon = L.divIcon({
   html: `<div style="background:#e11d48;width:20px;height:20px;border-radius:4px;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);"></div>`,
   iconSize: [20, 20],
   iconAnchor: [10, 10],
+})
+
+const birdIcon = L.divIcon({
+  className: '',
+  html: `<div style="background:#8b5cf6;width:18px;height:18px;border-radius:50%;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;font-size:10px;">🐦</div>`,
+  iconSize: [18, 18],
+  iconAnchor: [9, 9],
 })
 
 function PasswordGate({ onUnlock }) {
@@ -373,6 +381,38 @@ function SearchBox({ onSelectLocation }) {
   )
 }
 
+function BirdLoader({ onBirdsLoaded, onLoadingChange }) {
+  const map = useMap()
+
+  useEffect(() => {
+    async function fetchBirds() {
+      const center = map.getCenter()
+      const bounds = map.getBounds()
+
+      // Calculate radius based on viewport (rough estimate in km)
+      const latDiff = bounds.getNorth() - bounds.getSouth()
+      const dist = Math.min(50, Math.max(10, Math.round(latDiff * 55))) // ~55km per degree lat
+
+      onLoadingChange(true)
+      try {
+        const response = await fetch(
+          `https://api.ebird.org/v2/data/obs/geo/recent?lat=${center.lat}&lng=${center.lng}&dist=${dist}&maxResults=200`,
+          { headers: { 'X-eBirdApiToken': EBIRD_API_KEY } }
+        )
+        const data = await response.json()
+        onBirdsLoaded(data || [])
+      } catch (err) {
+        onBirdsLoaded([])
+      }
+      onLoadingChange(false)
+    }
+
+    fetchBirds()
+  }, [map, onBirdsLoaded, onLoadingChange])
+
+  return null
+}
+
 function App() {
   const [authed, setAuthed] = useState(localStorage.getItem('scotland-auth') === 'true')
   const [pins, setPins] = useState([])
@@ -383,6 +423,9 @@ function App() {
   const [trailPopup, setTrailPopup] = useState(null) // { latlng, trails }
   const [trailLoading, setTrailLoading] = useState(null) // latlng while loading
   const [mode, setMode] = useState('select') // 'select' or 'create'
+  const [birds, setBirds] = useState([])
+  const [birdsLoading, setBirdsLoading] = useState(false)
+  const [loadBirds, setLoadBirds] = useState(false) // triggers fetch
 
   const fetchPins = useCallback(async () => {
     const { data } = await supabase.from('pins').select('*').order('created_at', { ascending: false })
@@ -462,6 +505,29 @@ function App() {
             opacity={0.7}
           />
         )}
+        {loadBirds && (
+          <BirdLoader
+            onBirdsLoaded={(data) => { setBirds(data); setLoadBirds(false) }}
+            onLoadingChange={setBirdsLoading}
+          />
+        )}
+        {birds.map((bird, i) => (
+          <Marker
+            key={`bird-${i}-${bird.subId}`}
+            position={[bird.lat, bird.lng]}
+            icon={birdIcon}
+          >
+            <Popup>
+              <div className="text-sm">
+                <div className="font-bold text-purple-700">{bird.comName}</div>
+                <div className="text-xs text-slate-500 italic">{bird.sciName}</div>
+                <div className="text-xs text-slate-600 mt-1">{bird.locName}</div>
+                <div className="text-xs text-slate-400">{bird.obsDt}</div>
+                {bird.howMany && <div className="text-xs text-slate-600">Count: {bird.howMany}</div>}
+              </div>
+            </Popup>
+          </Marker>
+        ))}
         {trailLoading && (
           <CircleMarker
             center={[trailLoading.lat, trailLoading.lng]}
@@ -558,6 +624,31 @@ function App() {
             <span className="w-2.5 h-0.5 inline-block" style={{ background: '#16a34a' }} />
             Trails {showTrails ? 'ON' : 'OFF'}
           </button>
+          <button
+            onClick={() => setLoadBirds(true)}
+            disabled={birdsLoading}
+            className={`flex items-center gap-1 px-1.5 py-0.5 rounded ${birds.length > 0 ? 'bg-purple-100 text-purple-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'} disabled:opacity-50`}
+          >
+            {birdsLoading ? (
+              <>
+                <span className="inline-block w-3 h-3 border-2 border-purple-600 border-t-transparent rounded-full animate-spin"></span>
+                Loading...
+              </>
+            ) : (
+              <>
+                <span className="text-sm">🐦</span>
+                {birds.length > 0 ? `Birds (${birds.length})` : 'Load Birds'}
+              </>
+            )}
+          </button>
+          {birds.length > 0 && (
+            <button
+              onClick={() => setBirds([])}
+              className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 hover:bg-slate-200 text-xs"
+            >
+              Clear
+            </button>
+          )}
         </div>
       </div>
 
