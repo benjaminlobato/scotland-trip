@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback } from 'react'
-import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap, CircleMarker } from 'react-leaflet'
+import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap, CircleMarker, ScaleControl } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { supabase } from './supabase'
 import ATLAS_OBSCURA_PLACES from './atlasObscuraData'
 import DOG_PARKS from './dogParksData'
+import HERITAGE_AUDIO from './heritageAudioData'
 
 const PASSWORD = import.meta.env.VITE_APP_PASSWORD
 const EBIRD_API_KEY = import.meta.env.VITE_EBIRD_API_KEY
@@ -43,6 +44,20 @@ const birdIcon = L.divIcon({
 const dogIcon = L.divIcon({
   className: '',
   html: `<div style="background:#f97316;width:18px;height:18px;border-radius:50%;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;font-size:10px;">🐕</div>`,
+  iconSize: [18, 18],
+  iconAnchor: [9, 9],
+})
+
+const stayIcon = L.divIcon({
+  className: '',
+  html: `<div style="background:#0ea5e9;width:16px;height:16px;border-radius:50%;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;font-size:9px;">🏨</div>`,
+  iconSize: [16, 16],
+  iconAnchor: [8, 8],
+})
+
+const audioIcon = L.divIcon({
+  className: '',
+  html: `<div style="background:#dc2626;width:18px;height:18px;border-radius:50%;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;font-size:10px;">🎙️</div>`,
   iconSize: [18, 18],
   iconAnchor: [9, 9],
 })
@@ -507,6 +522,52 @@ function BirdLoader({ onComplete }) {
   return null
 }
 
+function AccommodationLoader({ onComplete }) {
+  const map = useMap()
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function fetchAccommodation() {
+      const bounds = map.getBounds()
+      const bbox = `${bounds.getSouth()},${bounds.getWest()},${bounds.getNorth()},${bounds.getEast()}`
+
+      const query = `[out:json][timeout:30];
+        (
+          node["tourism"~"hotel|hostel|guest_house|camp_site"](${bbox});
+          way["tourism"~"hotel|hostel|guest_house|camp_site"](${bbox});
+        );
+        out center tags 500;`
+
+      try {
+        const response = await fetch('https://overpass-api.de/api/interpreter', {
+          method: 'POST',
+          body: query
+        })
+        const data = await response.json()
+        const places = data.elements?.map(el => ({
+          name: el.tags?.name || 'Unnamed',
+          type: el.tags?.tourism,
+          website: el.tags?.website,
+          phone: el.tags?.phone,
+          stars: el.tags?.stars,
+          lat: el.lat || el.center?.lat,
+          lng: el.lon || el.center?.lon,
+        })).filter(p => p.lat && p.lng) || []
+        if (!cancelled) onComplete(places)
+      } catch (err) {
+        if (!cancelled) onComplete([])
+      }
+    }
+
+    fetchAccommodation()
+
+    return () => { cancelled = true }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  return null
+}
+
 function App() {
   const [authed, setAuthed] = useState(localStorage.getItem('scotland-auth') === 'true')
   const [pins, setPins] = useState([])
@@ -520,6 +581,10 @@ function App() {
   const [birds, setBirds] = useState([])
   const [birdsLoading, setBirdsLoading] = useState(false)
   const [showDogs, setShowDogs] = useState(false)
+  const [accommodation, setAccommodation] = useState([])
+  const [accommodationLoading, setAccommodationLoading] = useState(false)
+  const [showAudio, setShowAudio] = useState(true)
+  const [legendOpen, setLegendOpen] = useState(true)
 
   const fetchPins = useCallback(async () => {
     const { data } = await supabase.from('pins').select('*').order('created_at', { ascending: false })
@@ -558,6 +623,7 @@ function App() {
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
+        <ScaleControl position="bottomright" imperial={false} />
         <SearchBox onSelectLocation={(latlng) => { setSelectedPin(null); setAddingAt(latlng) }} />
         <MapClickHandler
           onClick={handleMapClick}
@@ -636,6 +702,76 @@ function App() {
             </Popup>
           </Marker>
         ))}
+        {accommodationLoading && (
+          <AccommodationLoader
+            onComplete={(data) => { setAccommodation(data); setAccommodationLoading(false) }}
+          />
+        )}
+        {accommodation.map((place, i) => (
+          <Marker
+            key={`stay-${i}-${place.lat}`}
+            position={[place.lat, place.lng]}
+            icon={stayIcon}
+          >
+            <Popup>
+              <div className="text-sm">
+                <div className="font-bold text-sky-600">{place.name}</div>
+                <div className="text-xs text-slate-500 capitalize">{place.type?.replace('_', ' ')}</div>
+                {place.stars && <div className="text-xs text-amber-500">{'★'.repeat(parseInt(place.stars))}</div>}
+                <div className="flex gap-2 mt-1">
+                  {place.website && (
+                    <a href={place.website} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 hover:underline">
+                      Website
+                    </a>
+                  )}
+                  <a
+                    href={`https://www.google.com/search?q=${encodeURIComponent(place.name + ' Scotland')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-blue-600 hover:underline"
+                  >
+                    Search
+                  </a>
+                </div>
+              </div>
+            </Popup>
+          </Marker>
+        ))}
+        {showAudio && HERITAGE_AUDIO.map((audio, i) => (
+          <Marker
+            key={`audio-${i}`}
+            position={[audio.lat, audio.lng]}
+            icon={audioIcon}
+          >
+            <Popup minWidth={audio.youtubeId ? 280 : 160}>
+              <div className="text-sm">
+                <div className="font-bold text-red-600">{audio.title}</div>
+                <div className="text-xs text-slate-500">{audio.location}</div>
+                <div className="text-xs text-slate-400 mt-1">{audio.source}</div>
+                {audio.youtubeId ? (
+                  <iframe
+                    className="mt-2 rounded"
+                    width="260"
+                    height="146"
+                    src={`https://www.youtube.com/embed/${audio.youtubeId}`}
+                    frameBorder="0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  />
+                ) : (
+                  <a
+                    href={audio.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-block mt-2 text-xs text-red-600 hover:text-red-800 hover:underline"
+                  >
+                    🎧 Listen →
+                  </a>
+                )}
+              </div>
+            </Popup>
+          </Marker>
+        ))}
         {trailLoading && (
           <CircleMarker
             center={[trailLoading.lat, trailLoading.lng]}
@@ -710,53 +846,78 @@ function App() {
       </div>
 
       {/* Legend */}
-      <div className="absolute bottom-5 left-5 bg-white/90 rounded-lg shadow px-3 py-2 z-[1000]">
-        <div className="flex gap-3 text-xs text-slate-700 flex-wrap">
-          {Object.values(CATEGORIES).map(c => (
-            <span key={c.label} className="flex items-center gap-1">
-              <span className="w-2.5 h-2.5 rounded-full inline-block" style={{ background: c.color }} />
-              {c.label}
-            </span>
-          ))}
-          <button
-            onClick={() => setShowAtlas(s => !s)}
-            className={`flex items-center gap-1 px-1.5 py-0.5 rounded ${showAtlas ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-400'}`}
-          >
-            <span className="w-2.5 h-2.5 rounded-sm inline-block" style={{ background: '#e11d48' }} />
-            Landmarks {showAtlas ? 'ON' : 'OFF'}
-          </button>
-          <button
-            onClick={() => setShowTrails(s => !s)}
-            className={`flex items-center gap-1 px-1.5 py-0.5 rounded ${showTrails ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-400'}`}
-          >
-            <span className="w-2.5 h-0.5 inline-block" style={{ background: '#16a34a' }} />
-            Trails {showTrails ? 'ON' : 'OFF'}
-          </button>
-          <button
-            onClick={() => birds.length > 0 ? setBirds([]) : setBirdsLoading(true)}
-            disabled={birdsLoading}
-            className={`flex items-center gap-1 px-1.5 py-0.5 rounded ${birds.length > 0 ? 'bg-purple-100 text-purple-700' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'} disabled:opacity-50`}
-          >
-            {birdsLoading ? (
-              <>
-                <span className="inline-block w-3 h-3 border-2 border-purple-600 border-t-transparent rounded-full animate-spin"></span>
-                Loading...
-              </>
-            ) : (
-              <>
-                <span className="text-sm">🐦</span>
-                {birds.length > 0 ? 'Bye Birds' : 'Hi Birds'}
-              </>
-            )}
-          </button>
-          <button
-            onClick={() => setShowDogs(s => !s)}
-            className={`flex items-center gap-1 px-1.5 py-0.5 rounded ${showDogs ? 'bg-orange-100 text-orange-700' : 'bg-slate-100 text-slate-400'}`}
-          >
-            <span className="text-sm">🐕</span>
-            Dogs {showDogs ? 'ON' : 'OFF'}
-          </button>
-        </div>
+      <div className="absolute bottom-5 left-5 bg-white/95 rounded-lg shadow-lg z-[1000] text-xs">
+        <button
+          onClick={() => setLegendOpen(s => !s)}
+          className="w-full px-3 py-2 flex items-center justify-between text-slate-700 font-medium hover:bg-slate-50 rounded-t-lg"
+        >
+          <span>Layers</span>
+          <span className={`transition-transform ${legendOpen ? 'rotate-180' : ''}`}>▼</span>
+        </button>
+        {legendOpen && (
+          <div className="px-3 pb-3 space-y-2">
+            {/* Pin categories */}
+            <div className="flex gap-2 flex-wrap text-slate-600 pb-2 border-b border-slate-200">
+              {Object.values(CATEGORIES).map(c => (
+                <span key={c.label} className="flex items-center gap-1">
+                  <span className="w-2 h-2 rounded-full" style={{ background: c.color }} />
+                  {c.label}
+                </span>
+              ))}
+            </div>
+            {/* Layer toggles */}
+            <div className="grid grid-cols-2 gap-1.5">
+              <button
+                onClick={() => setShowAtlas(s => !s)}
+                className={`flex items-center gap-1.5 px-2 py-1.5 rounded text-left ${showAtlas ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-400'}`}
+              >
+                <span className="w-2 h-2 rounded-sm" style={{ background: '#e11d48' }} />
+                Landmarks
+              </button>
+              <button
+                onClick={() => setShowTrails(s => !s)}
+                className={`flex items-center gap-1.5 px-2 py-1.5 rounded text-left ${showTrails ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-400'}`}
+              >
+                <span className="w-3 h-0.5" style={{ background: '#16a34a' }} />
+                Trails
+              </button>
+              <button
+                onClick={() => setShowDogs(s => !s)}
+                className={`flex items-center gap-1.5 px-2 py-1.5 rounded text-left ${showDogs ? 'bg-orange-100 text-orange-700' : 'bg-slate-100 text-slate-400'}`}
+              >
+                🐕 Dogs
+              </button>
+              <button
+                onClick={() => birds.length > 0 ? setBirds([]) : setBirdsLoading(true)}
+                disabled={birdsLoading}
+                className={`flex items-center gap-1.5 px-2 py-1.5 rounded text-left ${birds.length > 0 ? 'bg-purple-100 text-purple-700' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'} disabled:opacity-50`}
+              >
+                {birdsLoading ? (
+                  <><span className="w-3 h-3 border-2 border-purple-600 border-t-transparent rounded-full animate-spin" /> Loading</>
+                ) : (
+                  <>🐦 {birds.length > 0 ? 'Bye Birds' : 'Hi Birds'}</>
+                )}
+              </button>
+              <button
+                onClick={() => accommodation.length > 0 ? setAccommodation([]) : setAccommodationLoading(true)}
+                disabled={accommodationLoading}
+                className={`flex items-center gap-1.5 px-2 py-1.5 rounded text-left ${accommodation.length > 0 ? 'bg-sky-100 text-sky-700' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'} disabled:opacity-50`}
+              >
+                {accommodationLoading ? (
+                  <><span className="w-3 h-3 border-2 border-sky-600 border-t-transparent rounded-full animate-spin" /> Loading</>
+                ) : (
+                  <>🏨 {accommodation.length > 0 ? `Stays (${accommodation.length})` : 'Stays'}</>
+                )}
+              </button>
+              <button
+                onClick={() => setShowAudio(s => !s)}
+                className={`flex items-center gap-1.5 px-2 py-1.5 rounded text-left ${showAudio ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-400'}`}
+              >
+                🎙️ Audio
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {addingAt && (
