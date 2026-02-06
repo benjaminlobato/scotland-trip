@@ -898,8 +898,8 @@ function App() {
                       <span class="font-medium">${climate.avgHighF}°F</span>
                       <span class="text-slate-500">Low:</span>
                       <span class="font-medium">${climate.avgLowF}°F</span>
-                      <span class="text-slate-500">Rainfall:</span>
-                      <span class="font-medium">${climate.rainfallIn}"</span>
+                      <span class="text-slate-500">Rainy days:</span>
+                      <span class="font-medium">${climate.rainyDaysPct}%</span>
                       <span class="text-slate-500">Daylight:</span>
                       <span class="font-medium">${climate.daylightHrs}hrs</span>
                     </div>
