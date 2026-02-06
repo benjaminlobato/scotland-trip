@@ -337,6 +337,16 @@ const YOUTUBE_VIDEOS = [
     youtubeId: "Dc4hMQ7JRdA",
     source: "Drone 4K"
   },
+
+  // === CULLODEN ===
+  {
+    title: "Culloden (1964) - Jacobite Rebellion Docu-Drama",
+    location: "Culloden Battlefield",
+    lat: 57.4772,
+    lng: -4.0963,
+    youtubeId: "-1TZq6DfKKA",
+    source: "Peter Watkins"
+  },
 ]
 
 export default YOUTUBE_VIDEOS

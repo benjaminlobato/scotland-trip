@@ -7,6 +7,7 @@ import ATLAS_OBSCURA_PLACES from './atlasObscuraData'
 import DOG_PARKS from './dogParksData'
 import HERITAGE_AUDIO from './heritageAudioData'
 import YOUTUBE_VIDEOS from './youtubeVideosData'
+import NOTABLE_FOOD from './foodData'
 
 const PASSWORD = import.meta.env.VITE_APP_PASSWORD
 const EBIRD_API_KEY = import.meta.env.VITE_EBIRD_API_KEY
@@ -80,6 +81,13 @@ const videoIcon = L.divIcon({
 const trainIcon = L.divIcon({
   className: '',
   html: `<div style="background:#0891b2;width:18px;height:18px;border-radius:50%;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;font-size:10px;">🚂</div>`,
+  iconSize: [18, 18],
+  iconAnchor: [9, 9],
+})
+
+const foodIcon = L.divIcon({
+  className: '',
+  html: `<div style="background:#f59e0b;width:18px;height:18px;border-radius:50%;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;font-size:10px;">🍽️</div>`,
   iconSize: [18, 18],
   iconAnchor: [9, 9],
 })
@@ -754,6 +762,7 @@ function App() {
   const [trains, setTrains] = useState([])
   const [trainsLoading, setTrainsLoading] = useState(false)
   const [showTrains, setShowTrains] = useState(false)
+  const [showFood, setShowFood] = useState(false)
   const [showAudio, setShowAudio] = useState(true)
   const [showVideos, setShowVideos] = useState(false)
   const [legendOpen, setLegendOpen] = useState(true)
@@ -964,6 +973,39 @@ function App() {
                     className="text-xs text-blue-600 hover:underline"
                   >
                     Directions
+                  </a>
+                </div>
+              </div>
+            </Popup>
+          </Marker>
+        ))}
+        {showFood && NOTABLE_FOOD.map((place, i) => (
+          <Marker
+            key={`food-${i}`}
+            position={[place.lat, place.lng]}
+            icon={foodIcon}
+          >
+            <Popup>
+              <div className="text-sm">
+                <div className="font-bold text-amber-600">{place.name}</div>
+                <div className="text-xs text-slate-500">{place.location} · {place.type}</div>
+                <div className="text-xs text-slate-600 mt-1">{place.description}</div>
+                <div className="flex gap-2 mt-2">
+                  <a
+                    href={`https://www.google.com/search?q=${encodeURIComponent(place.name + ' ' + place.location + ' restaurant')}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-blue-600 hover:underline"
+                  >
+                    Search
+                  </a>
+                  <a
+                    href={`https://www.google.com/maps/search/${encodeURIComponent(place.name + ' ' + place.location)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-blue-600 hover:underline"
+                  >
+                    Map
                   </a>
                 </div>
               </div>
@@ -1201,6 +1243,12 @@ function App() {
                 ) : (
                   <>🚂 {showTrains ? `Trains${trains.length > 0 ? ` (${trains.length})` : ''}` : 'Trains'}</>
                 )}
+              </button>
+              <button
+                onClick={() => setShowFood(s => !s)}
+                className={`flex items-center gap-1.5 px-2 py-1.5 rounded text-left ${showFood ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-400'}`}
+              >
+                🍽️ Food
               </button>
               <button
                 onClick={() => setShowVideos(s => !s)}
