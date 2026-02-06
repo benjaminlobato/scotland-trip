@@ -77,6 +77,13 @@ const videoIcon = L.divIcon({
   iconAnchor: [9, 9],
 })
 
+const trainIcon = L.divIcon({
+  className: '',
+  html: `<div style="background:#0891b2;width:18px;height:18px;border-radius:50%;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;font-size:10px;">🚂</div>`,
+  iconSize: [18, 18],
+  iconAnchor: [9, 9],
+})
+
 function PasswordGate({ onUnlock }) {
   const [pw, setPw] = useState('')
   const [error, setError] = useState(false)
@@ -678,6 +685,55 @@ function CastleLoader({ onComplete }) {
   return null
 }
 
+function TrainLoader({ onComplete }) {
+  const map = useMap()
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function fetchTrains() {
+      const bounds = map.getBounds()
+      const bbox = `${bounds.getSouth()},${bounds.getWest()},${bounds.getNorth()},${bounds.getEast()}`
+
+      // Query for stations only (rail lines are too dense)
+      const query = `[out:json][timeout:25];
+        (
+          node["railway"="station"](${bbox});
+          node["railway"="halt"](${bbox});
+        );
+        out tags 300;`
+
+      try {
+        const response = await fetch('https://overpass-api.de/api/interpreter', {
+          method: 'POST',
+          body: query
+        })
+        const data = await response.json()
+
+        const stations = data.elements
+          ?.map(el => ({
+            name: el.tags?.name || 'Unnamed Station',
+            operator: el.tags?.operator,
+            network: el.tags?.network,
+            lat: el.lat,
+            lng: el.lon,
+          }))
+          .filter(s => s.lat && s.lng && s.name !== 'Unnamed Station') || []
+
+        if (!cancelled) onComplete(stations)
+      } catch (err) {
+        if (!cancelled) onComplete([])
+      }
+    }
+
+    fetchTrains()
+
+    return () => { cancelled = true }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  return null
+}
+
 function App() {
   const [authed, setAuthed] = useState(localStorage.getItem('scotland-auth') === 'true')
   const [pins, setPins] = useState([])
@@ -695,6 +751,8 @@ function App() {
   const [accommodationLoading, setAccommodationLoading] = useState(false)
   const [castles, setCastles] = useState([])
   const [castlesLoading, setCastlesLoading] = useState(false)
+  const [trains, setTrains] = useState([])
+  const [trainsLoading, setTrainsLoading] = useState(false)
   const [showAudio, setShowAudio] = useState(true)
   const [showVideos, setShowVideos] = useState(false)
   const [legendOpen, setLegendOpen] = useState(true)
@@ -863,6 +921,43 @@ function App() {
           >
             <Popup>
               <CastlePopup castle={castle} />
+            </Popup>
+          </Marker>
+        ))}
+        {trainsLoading && (
+          <TrainLoader
+            onComplete={(data) => { setTrains(data); setTrainsLoading(false) }}
+          />
+        )}
+        {trains.map((station, i) => (
+          <Marker
+            key={`station-${i}-${station.lat}`}
+            position={[station.lat, station.lng]}
+            icon={trainIcon}
+          >
+            <Popup>
+              <div className="text-sm">
+                <div className="font-bold text-cyan-700">{station.name}</div>
+                {station.operator && <div className="text-xs text-slate-500">{station.operator}</div>}
+                <div className="flex gap-2 mt-1">
+                  <a
+                    href={`https://www.scotrail.co.uk/plan-your-journey`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-blue-600 hover:underline"
+                  >
+                    ScotRail
+                  </a>
+                  <a
+                    href={`https://www.google.com/maps/dir/?api=1&destination=${station.lat},${station.lng}&travelmode=transit`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-blue-600 hover:underline"
+                  >
+                    Directions
+                  </a>
+                </div>
+              </div>
             </Popup>
           </Marker>
         ))}
@@ -1077,6 +1172,17 @@ function App() {
                   <><span className="w-3 h-3 border-2 border-violet-600 border-t-transparent rounded-full animate-spin" /> Loading</>
                 ) : (
                   <>🏰 {castles.length > 0 ? `Castles (${castles.length})` : 'Castles'}</>
+                )}
+              </button>
+              <button
+                onClick={() => trains.length > 0 ? setTrains([]) : setTrainsLoading(true)}
+                disabled={trainsLoading}
+                className={`flex items-center gap-1.5 px-2 py-1.5 rounded text-left ${trains.length > 0 ? 'bg-cyan-100 text-cyan-700' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'} disabled:opacity-50`}
+              >
+                {trainsLoading ? (
+                  <><span className="w-3 h-3 border-2 border-cyan-600 border-t-transparent rounded-full animate-spin" /> Loading</>
+                ) : (
+                  <>🚂 {trains.length > 0 ? `Trains (${trains.length})` : 'Trains'}</>
                 )}
               </button>
               <button
