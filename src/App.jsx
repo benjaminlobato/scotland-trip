@@ -1145,10 +1145,10 @@ function App() {
       </div>
 
       {/* Legend */}
-      <div className="absolute bottom-5 left-5 bg-white/95 rounded-lg shadow-lg z-[1000] text-xs">
+      <div className="absolute bottom-5 left-5 bg-white/95 rounded-lg shadow-lg z-[1000] text-xs min-w-[120px]">
         <button
           onClick={() => setLegendOpen(s => !s)}
-          className="w-full px-3 py-2 flex items-center justify-between text-slate-700 font-medium hover:bg-slate-50 rounded-t-lg"
+          className={`w-full px-3 py-2 flex items-center justify-between text-slate-700 font-medium hover:bg-slate-50 ${legendOpen ? 'rounded-t-lg' : 'rounded-lg'}`}
         >
           <span>Layers</span>
           <span className={`transition-transform ${legendOpen ? 'rotate-180' : ''}`}>▼</span>
