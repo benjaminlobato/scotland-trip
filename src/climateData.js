@@ -1,0 +1,38 @@
+// October climate averages for Scottish council areas
+// Data compiled from Met Office and historical records
+const CLIMATE_DATA = {
+  "Aberdeen City": { avgHighC: 12, avgLowC: 6, rainfallMm: 80, daylightHrs: 10.5 },
+  "Aberdeenshire": { avgHighC: 11, avgLowC: 5, rainfallMm: 95, daylightHrs: 10.5 },
+  "Angus": { avgHighC: 12, avgLowC: 5, rainfallMm: 85, daylightHrs: 10.5 },
+  "Argyll and Bute": { avgHighC: 12, avgLowC: 7, rainfallMm: 170, daylightHrs: 10.5 },
+  "City of Edinburgh": { avgHighC: 13, avgLowC: 7, rainfallMm: 65, daylightHrs: 10.5 },
+  "Clackmannanshire": { avgHighC: 12, avgLowC: 6, rainfallMm: 90, daylightHrs: 10.5 },
+  "Dumfries and Galloway": { avgHighC: 13, avgLowC: 7, rainfallMm: 120, daylightHrs: 10.5 },
+  "Dundee City": { avgHighC: 12, avgLowC: 6, rainfallMm: 70, daylightHrs: 10.5 },
+  "East Ayrshire": { avgHighC: 12, avgLowC: 6, rainfallMm: 130, daylightHrs: 10.5 },
+  "East Dunbartonshire": { avgHighC: 12, avgLowC: 6, rainfallMm: 120, daylightHrs: 10.5 },
+  "East Lothian": { avgHighC: 13, avgLowC: 7, rainfallMm: 60, daylightHrs: 10.5 },
+  "East Renfrewshire": { avgHighC: 12, avgLowC: 6, rainfallMm: 130, daylightHrs: 10.5 },
+  "Eilean Siar": { avgHighC: 12, avgLowC: 8, rainfallMm: 140, daylightHrs: 10.5 },
+  "Falkirk": { avgHighC: 12, avgLowC: 6, rainfallMm: 85, daylightHrs: 10.5 },
+  "Fife": { avgHighC: 12, avgLowC: 6, rainfallMm: 70, daylightHrs: 10.5 },
+  "Glasgow City": { avgHighC: 13, avgLowC: 7, rainfallMm: 115, daylightHrs: 10.5 },
+  "Highland": { avgHighC: 11, avgLowC: 5, rainfallMm: 150, daylightHrs: 10 },
+  "Inverclyde": { avgHighC: 13, avgLowC: 7, rainfallMm: 140, daylightHrs: 10.5 },
+  "Midlothian": { avgHighC: 12, avgLowC: 6, rainfallMm: 75, daylightHrs: 10.5 },
+  "Moray": { avgHighC: 12, avgLowC: 5, rainfallMm: 70, daylightHrs: 10 },
+  "North Ayrshire": { avgHighC: 13, avgLowC: 7, rainfallMm: 120, daylightHrs: 10.5 },
+  "North Lanarkshire": { avgHighC: 12, avgLowC: 6, rainfallMm: 110, daylightHrs: 10.5 },
+  "Orkney Islands": { avgHighC: 12, avgLowC: 7, rainfallMm: 90, daylightHrs: 10 },
+  "Perth and Kinross": { avgHighC: 12, avgLowC: 5, rainfallMm: 100, daylightHrs: 10.5 },
+  "Renfrewshire": { avgHighC: 12, avgLowC: 7, rainfallMm: 130, daylightHrs: 10.5 },
+  "Scottish Borders": { avgHighC: 12, avgLowC: 5, rainfallMm: 80, daylightHrs: 10.5 },
+  "Shetland Islands": { avgHighC: 11, avgLowC: 6, rainfallMm: 130, daylightHrs: 9.5 },
+  "South Ayrshire": { avgHighC: 13, avgLowC: 7, rainfallMm: 110, daylightHrs: 10.5 },
+  "South Lanarkshire": { avgHighC: 12, avgLowC: 5, rainfallMm: 120, daylightHrs: 10.5 },
+  "Stirling": { avgHighC: 12, avgLowC: 5, rainfallMm: 130, daylightHrs: 10.5 },
+  "West Dunbartonshire": { avgHighC: 12, avgLowC: 7, rainfallMm: 140, daylightHrs: 10.5 },
+  "West Lothian": { avgHighC: 12, avgLowC: 6, rainfallMm: 80, daylightHrs: 10.5 },
+}
+
+export default CLIMATE_DATA

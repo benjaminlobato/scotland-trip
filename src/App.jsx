@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap, CircleMarker, ScaleControl } from 'react-leaflet'
+import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap, CircleMarker, ScaleControl, GeoJSON } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { supabase } from './supabase'
@@ -8,6 +8,8 @@ import DOG_PARKS from './dogParksData'
 import HERITAGE_AUDIO from './heritageAudioData'
 import YOUTUBE_VIDEOS from './youtubeVideosData'
 import NOTABLE_FOOD from './foodData'
+import SCOTLAND_COUNCILS from './scotlandCouncils.json'
+import CLIMATE_DATA from './climateData'
 
 const PASSWORD = import.meta.env.VITE_APP_PASSWORD
 const EBIRD_API_KEY = import.meta.env.VITE_EBIRD_API_KEY
@@ -776,6 +778,7 @@ function App() {
   const [showFood, setShowFood] = useState(false)
   const [showAudio, setShowAudio] = useState(true)
   const [showVideos, setShowVideos] = useState(false)
+  const [showClimate, setShowClimate] = useState(false)
   const [legendOpen, setLegendOpen] = useState(true)
 
   const fetchPins = useCallback(async () => {
@@ -863,6 +866,47 @@ function App() {
             attribution='&copy; <a href="https://www.openrailwaymap.org">OpenRailwayMap</a>'
             subdomains={['a', 'b', 'c']}
             opacity={0.8}
+          />
+        )}
+        {showClimate && (
+          <GeoJSON
+            key="climate-layer"
+            data={SCOTLAND_COUNCILS}
+            style={(feature) => {
+              const climate = CLIMATE_DATA[feature.properties.LAD13NM]
+              const temp = climate?.avgHighC || 12
+              // Color from blue (cold) to orange (warm): 10°C = blue, 14°C = orange
+              const hue = Math.max(0, Math.min(60, (temp - 10) * 15))
+              return {
+                fillColor: `hsl(${hue}, 70%, 50%)`,
+                weight: 1,
+                opacity: 0.8,
+                color: 'white',
+                fillOpacity: 0.4,
+              }
+            }}
+            onEachFeature={(feature, layer) => {
+              const name = feature.properties.LAD13NM
+              const climate = CLIMATE_DATA[name]
+              if (climate) {
+                layer.bindPopup(`
+                  <div class="text-sm">
+                    <div class="font-bold text-slate-800 mb-2">${name}</div>
+                    <div class="text-xs text-slate-500 mb-2">October Averages</div>
+                    <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                      <span class="text-slate-500">High:</span>
+                      <span class="font-medium">${climate.avgHighC}°C</span>
+                      <span class="text-slate-500">Low:</span>
+                      <span class="font-medium">${climate.avgLowC}°C</span>
+                      <span class="text-slate-500">Rainfall:</span>
+                      <span class="font-medium">${climate.rainfallMm}mm</span>
+                      <span class="text-slate-500">Daylight:</span>
+                      <span class="font-medium">${climate.daylightHrs}hrs</span>
+                    </div>
+                  </div>
+                `)
+              }
+            }}
           />
         )}
         {birdsLoading && (
@@ -1276,6 +1320,12 @@ function App() {
                 className={`flex items-center gap-1.5 px-2 py-1.5 rounded text-left ${showVideos ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-400'}`}
               >
                 ▶️ Videos
+              </button>
+              <button
+                onClick={() => setShowClimate(s => !s)}
+                className={`flex items-center gap-1.5 px-2 py-1.5 rounded text-left ${showClimate ? 'bg-orange-100 text-orange-700' : 'bg-slate-100 text-slate-400'}`}
+              >
+                🌡️ Climate
               </button>
             </div>
           </div>
