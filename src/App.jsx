@@ -874,9 +874,9 @@ function App() {
             data={SCOTLAND_COUNCILS}
             style={(feature) => {
               const climate = CLIMATE_DATA[feature.properties.LAD13NM]
-              const temp = climate?.avgHighC || 12
-              // Color from blue (cold) to orange (warm): 10°C = blue, 14°C = orange
-              const hue = Math.max(0, Math.min(60, (temp - 10) * 15))
+              const temp = climate?.avgHighF || 54
+              // Color from blue (cold) to orange (warm): 50°F = blue, 58°F = orange
+              const hue = Math.max(0, Math.min(60, (temp - 50) * 7.5))
               return {
                 fillColor: `hsl(${hue}, 70%, 50%)`,
                 weight: 1,
@@ -895,11 +895,11 @@ function App() {
                     <div class="text-xs text-slate-500 mb-2">October Averages</div>
                     <div class="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
                       <span class="text-slate-500">High:</span>
-                      <span class="font-medium">${climate.avgHighC}°C</span>
+                      <span class="font-medium">${climate.avgHighF}°F</span>
                       <span class="text-slate-500">Low:</span>
-                      <span class="font-medium">${climate.avgLowC}°C</span>
+                      <span class="font-medium">${climate.avgLowF}°F</span>
                       <span class="text-slate-500">Rainfall:</span>
-                      <span class="font-medium">${climate.rainfallMm}mm</span>
+                      <span class="font-medium">${climate.rainfallIn}"</span>
                       <span class="text-slate-500">Daylight:</span>
                       <span class="font-medium">${climate.daylightHrs}hrs</span>
                     </div>
