@@ -1145,15 +1145,24 @@ function App() {
       </div>
 
       {/* Legend */}
-      <div className="absolute bottom-5 left-5 bg-white/95 rounded-lg shadow-lg z-[1000] text-xs min-w-[120px]">
-        <button
-          onClick={() => setLegendOpen(s => !s)}
-          className={`w-full px-3 py-2 flex items-center justify-between text-slate-700 font-medium hover:bg-slate-50 ${legendOpen ? 'rounded-t-lg' : 'rounded-lg'}`}
-        >
-          <span>Layers</span>
-          <span className={`transition-transform ${legendOpen ? 'rotate-180' : ''}`}>▼</span>
-        </button>
-        {legendOpen && (
+      <div className="absolute bottom-5 left-5 z-[1000] text-xs">
+        {!legendOpen ? (
+          <button
+            onClick={() => setLegendOpen(true)}
+            className="bg-white shadow-lg rounded-lg px-4 py-3 flex items-center gap-2 text-slate-700 font-medium active:bg-slate-100"
+          >
+            <span>Layers</span>
+            <span>▼</span>
+          </button>
+        ) : (
+          <div className="bg-white/95 rounded-lg shadow-lg">
+            <button
+              onClick={() => setLegendOpen(false)}
+              className="w-full px-3 py-2 flex items-center justify-between text-slate-700 font-medium hover:bg-slate-50 rounded-t-lg"
+            >
+              <span>Layers</span>
+              <span className="rotate-180">▼</span>
+            </button>
           <div className="px-3 pb-3 space-y-2">
             {/* Pin categories */}
             <div className="flex gap-2 flex-wrap text-slate-600 pb-2 border-b border-slate-200">
@@ -1258,6 +1267,7 @@ function App() {
               </button>
             </div>
           </div>
+        </div>
         )}
       </div>
 
