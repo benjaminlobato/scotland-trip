@@ -397,7 +397,7 @@ function SearchBox({ onSelectLocation }) {
   }
 
   return (
-    <div className="absolute top-4 left-14 z-[1000] w-72">
+    <div className="absolute top-4 left-14 z-[1000] w-48 sm:w-72">
       <div className="relative">
         <input
           type="text"
@@ -1139,8 +1139,9 @@ function App() {
               ? 'bg-blue-600 text-white'
               : 'bg-white text-slate-600 hover:bg-slate-100'
           }`}
+          title="Add Pin"
         >
-          + Add Pin
+          📍
         </button>
       </div>
 
