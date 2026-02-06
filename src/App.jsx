@@ -701,7 +701,7 @@ function TrainLoader({ onComplete }) {
           node["railway"="station"](${bbox});
           node["railway"="halt"](${bbox});
         );
-        out tags 300;`
+        out 300;`
 
       try {
         const response = await fetch('https://overpass-api.de/api/interpreter', {
@@ -753,6 +753,7 @@ function App() {
   const [castlesLoading, setCastlesLoading] = useState(false)
   const [trains, setTrains] = useState([])
   const [trainsLoading, setTrainsLoading] = useState(false)
+  const [showTrains, setShowTrains] = useState(false)
   const [showAudio, setShowAudio] = useState(true)
   const [showVideos, setShowVideos] = useState(false)
   const [legendOpen, setLegendOpen] = useState(true)
@@ -834,6 +835,14 @@ function App() {
             url="https://tile.waymarkedtrails.org/hiking/{z}/{x}/{y}.png"
             attribution='&copy; <a href="https://waymarkedtrails.org">Waymarked Trails</a>'
             opacity={0.7}
+          />
+        )}
+        {showTrains && (
+          <TileLayer
+            url="https://{s}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png"
+            attribution='&copy; <a href="https://www.openrailwaymap.org">OpenRailwayMap</a>'
+            subdomains={['a', 'b', 'c']}
+            opacity={0.8}
           />
         )}
         {birdsLoading && (
@@ -929,7 +938,7 @@ function App() {
             onComplete={(data) => { setTrains(data); setTrainsLoading(false) }}
           />
         )}
-        {trains.map((station, i) => (
+        {showTrains && trains.map((station, i) => (
           <Marker
             key={`station-${i}-${station.lat}`}
             position={[station.lat, station.lng]}
@@ -1175,14 +1184,22 @@ function App() {
                 )}
               </button>
               <button
-                onClick={() => trains.length > 0 ? setTrains([]) : setTrainsLoading(true)}
+                onClick={() => {
+                  if (showTrains) {
+                    setShowTrains(false)
+                    setTrains([])
+                  } else {
+                    setShowTrains(true)
+                    setTrainsLoading(true)
+                  }
+                }}
                 disabled={trainsLoading}
-                className={`flex items-center gap-1.5 px-2 py-1.5 rounded text-left ${trains.length > 0 ? 'bg-cyan-100 text-cyan-700' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'} disabled:opacity-50`}
+                className={`flex items-center gap-1.5 px-2 py-1.5 rounded text-left ${showTrains ? 'bg-cyan-100 text-cyan-700' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'} disabled:opacity-50`}
               >
                 {trainsLoading ? (
                   <><span className="w-3 h-3 border-2 border-cyan-600 border-t-transparent rounded-full animate-spin" /> Loading</>
                 ) : (
-                  <>🚂 {trains.length > 0 ? `Trains (${trains.length})` : 'Trains'}</>
+                  <>🚂 {showTrains ? `Trains${trains.length > 0 ? ` (${trains.length})` : ''}` : 'Trains'}</>
                 )}
               </button>
               <button
