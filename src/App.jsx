@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { MapContainer, TileLayer, Marker, Popup, useMapEvents, useMap, CircleMarker, ScaleControl } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
@@ -486,7 +486,18 @@ function BirdPopup({ bird }) {
   const [image, setImage] = useState(null)
   const [audioUrl, setAudioUrl] = useState(null)
   const [playing, setPlaying] = useState(false)
-  const audioRef = useState(() => new Audio())[0]
+  const audioRef = useRef(null)
+
+  // Cleanup audio on unmount
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause()
+        audioRef.current.src = ''
+        audioRef.current = null
+      }
+    }
+  }, [])
 
   useEffect(() => {
     // Fetch Wikipedia image
@@ -506,22 +517,22 @@ function BirdPopup({ bird }) {
         }
       })
       .catch(() => {})
-
-    return () => {
-      audioRef.pause()
-      audioRef.src = ''
-    }
-  }, [bird.comName, bird.speciesCode, audioRef])
+  }, [bird.comName, bird.speciesCode])
 
   function togglePlay() {
     if (playing) {
-      audioRef.pause()
+      if (audioRef.current) {
+        audioRef.current.pause()
+      }
       setPlaying(false)
     } else if (audioUrl) {
-      audioRef.src = audioUrl
-      audioRef.play()
+      if (!audioRef.current) {
+        audioRef.current = new Audio()
+      }
+      audioRef.current.src = audioUrl
+      audioRef.current.play()
       setPlaying(true)
-      audioRef.onended = () => setPlaying(false)
+      audioRef.current.onended = () => setPlaying(false)
     }
   }
 
