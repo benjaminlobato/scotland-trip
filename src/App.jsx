@@ -722,6 +722,7 @@ function App() {
   const [pins, setPins] = useState([])
   const [addingAt, setAddingAt] = useState(null)
   const [selectedPin, setSelectedPin] = useState(null)
+  const [showPins, setShowPins] = useState(true)
   const [showAtlas, setShowAtlas] = useState(true)
   const [showTrails, setShowTrails] = useState(true)
   const [trailPopup, setTrailPopup] = useState(null) // { latlng, trails }
@@ -794,7 +795,7 @@ function App() {
             setTrailPopup({ latlng, trails })
           }}
         />
-        {pins.map(pin => (
+        {showPins && pins.map(pin => (
           <Marker
             key={pin.id}
             position={[pin.latitude, pin.longitude]}
@@ -1148,7 +1149,7 @@ function App() {
           Select
         </button>
         <button
-          onClick={() => setMode('create')}
+          onClick={() => { setMode('create'); setShowPins(true) }}
           className={`px-3 py-2 rounded-lg shadow text-sm font-medium transition-colors ${
             mode === 'create'
               ? 'bg-blue-600 text-white'
@@ -1180,17 +1181,14 @@ function App() {
               <span className="rotate-180">▼</span>
             </button>
           <div className="px-3 pb-3 space-y-2">
-            {/* Pin categories */}
-            <div className="flex gap-2 flex-wrap text-slate-600 pb-2 border-b border-slate-200">
-              {Object.values(CATEGORIES).map(c => (
-                <span key={c.label} className="flex items-center gap-1">
-                  <span className="w-2 h-2 rounded-full" style={{ background: c.color }} />
-                  {c.label}
-                </span>
-              ))}
-            </div>
             {/* Layer toggles */}
             <div className="grid grid-cols-2 gap-1.5">
+              <button
+                onClick={() => setShowPins(s => !s)}
+                className={`flex items-center gap-1.5 px-2 py-1.5 rounded text-left ${showPins ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-400'}`}
+              >
+                📍 Pins
+              </button>
               <button
                 onClick={() => setShowAtlas(s => !s)}
                 className={`flex items-center gap-1.5 px-2 py-1.5 rounded text-left ${showAtlas ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-400'}`}
