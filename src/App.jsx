@@ -32,7 +32,7 @@ function makeIcon(color) {
 
 const landmarkIcon = L.divIcon({
   className: '',
-  html: `<div style="background:#e11d48;width:20px;height:20px;border-radius:4px;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);"></div>`,
+  html: `<div style="background:#0d9488;width:20px;height:20px;border-radius:4px;border:2px solid white;box-shadow:0 2px 6px rgba(0,0,0,0.3);"></div>`,
   iconSize: [20, 20],
   iconAnchor: [10, 10],
 })
@@ -175,7 +175,7 @@ function AddPinForm({ latlng, onSave, onCancel }) {
 
 function PinDetail({ pin, onClose, onDelete }) {
   const isAtlas = pin.category === 'atlas'
-  const cat = isAtlas ? { label: 'Landmark', color: '#e11d48' } : (CATEGORIES[pin.category] || CATEGORIES.other)
+  const cat = isAtlas ? { label: 'Landmark', color: '#0d9488' } : (CATEGORIES[pin.category] || CATEGORIES.other)
   const [wiki, setWiki] = useState(null)
   const [wikiLoading, setWikiLoading] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -221,7 +221,7 @@ function PinDetail({ pin, onClose, onDelete }) {
       <h2 className="text-lg font-bold text-slate-800 mb-2">{pin.name}</h2>
       {pin.description && <p className="text-slate-600 mb-3">{pin.description}</p>}
       {pin.url && (
-        <a href={pin.url} target="_blank" rel="noopener noreferrer" className="inline-block text-sm text-rose-600 hover:text-rose-800 underline mb-3">
+        <a href={pin.url} target="_blank" rel="noopener noreferrer" className="inline-block text-sm text-teal-600 hover:text-teal-800 underline mb-3">
           View on Atlas Obscura →
         </a>
       )}
@@ -1191,9 +1191,9 @@ function App() {
               </button>
               <button
                 onClick={() => setShowAtlas(s => !s)}
-                className={`flex items-center gap-1.5 px-2 py-1.5 rounded text-left ${showAtlas ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-400'}`}
+                className={`flex items-center gap-1.5 px-2 py-1.5 rounded text-left ${showAtlas ? 'bg-teal-100 text-teal-700' : 'bg-slate-100 text-slate-400'}`}
               >
-                <span className="w-2 h-2 rounded-sm" style={{ background: '#e11d48' }} />
+                <span className="w-2 h-2 rounded-sm" style={{ background: '#0d9488' }} />
                 Landmarks
               </button>
               <button
