@@ -2,14 +2,13 @@
 
 An interactive collaborative map for planning a Scotland trip. Features multiple data layers including landmarks, restaurants, hiking trails, train routes, bird sightings, heritage audio recordings, YouTube travel videos, castles, and regional climate data.
 
-**Live site**: Hosted on Vercel (password protected)
+**Live site**: Hosted on Vercel
 
 ## Features
 
 - **Collaborative pins** - Add and share places with trip companions (Supabase backend)
 - **10+ toggleable map layers** - Landmarks, trails, trains, food, videos, castles, birds, climate, etc.
 - **Mobile-friendly** - Responsive design with touch-optimized controls
-- **Password protected** - Simple shared password for privacy
 
 ## Tech Stack
 
@@ -48,7 +47,6 @@ Create a `.env` file:
 ```bash
 VITE_SUPABASE_URL=https://your-project.supabase.co
 VITE_SUPABASE_ANON_KEY=your-anon-key
-VITE_APP_PASSWORD=your-shared-password
 VITE_EBIRD_API_KEY=your-ebird-api-key  # Optional, for bird sightings
 ```
 
@@ -82,11 +80,10 @@ The repo is connected to Vercel for auto-deploy on push. Environment variables m
 
 ## Usage
 
-1. Enter the shared password
-2. Toggle layers using the "Layers" panel (bottom-left)
-3. Click "📍" to enter pin creation mode, then click map to add
-4. Click any marker to see details/popup
-5. Search places using the search box (top-left)
+1. Toggle layers using the "Layers" panel (bottom-left)
+2. Click "📍" to enter pin creation mode, then click map to add
+3. Click any marker to see details/popup
+4. Search places using the search box (top-left)
 
 ## Project Structure
 

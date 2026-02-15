@@ -31,7 +31,6 @@ This is a React + Vite application using Leaflet for mapping. Data comes from th
 # Required
 VITE_SUPABASE_URL=https://xxx.supabase.co
 VITE_SUPABASE_ANON_KEY=xxx
-VITE_APP_PASSWORD=xxx
 
 # Optional (bird sightings won't work without this)
 VITE_EBIRD_API_KEY=xxx

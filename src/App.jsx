@@ -11,7 +11,6 @@ import NOTABLE_FOOD from './foodData'
 import SCOTLAND_COUNCILS from './scotlandCouncils.json'
 import CLIMATE_DATA from './climateData'
 
-const PASSWORD = import.meta.env.VITE_APP_PASSWORD
 const EBIRD_API_KEY = import.meta.env.VITE_EBIRD_API_KEY
 
 const CATEGORIES = {
@@ -93,42 +92,6 @@ const foodIcon = L.divIcon({
   iconSize: [18, 18],
   iconAnchor: [9, 9],
 })
-
-function PasswordGate({ onUnlock }) {
-  const [pw, setPw] = useState('')
-  const [error, setError] = useState(false)
-
-  function handleSubmit(e) {
-    e.preventDefault()
-    if (pw === PASSWORD) {
-      localStorage.setItem('scotland-auth', 'true')
-      onUnlock()
-    } else {
-      setError(true)
-    }
-  }
-
-  return (
-    <div className="flex items-center justify-center h-screen bg-slate-800">
-      <form onSubmit={handleSubmit} className="bg-white p-8 rounded-lg shadow-lg max-w-sm w-full">
-        <h1 className="text-2xl font-bold mb-2 text-slate-800">Scotland Trip 🏴󠁧󠁢󠁳󠁣󠁴󠁿</h1>
-        <p className="text-slate-500 mb-4">Enter the password to continue</p>
-        <input
-          type="password"
-          value={pw}
-          onChange={e => { setPw(e.target.value); setError(false) }}
-          className="w-full border border-slate-300 rounded px-3 py-2 mb-2 text-black"
-          placeholder="Password"
-          autoFocus
-        />
-        {error && <p className="text-red-500 text-sm mb-2">Wrong password</p>}
-        <button type="submit" className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700">
-          Enter
-        </button>
-      </form>
-    </div>
-  )
-}
 
 function AddPinForm({ latlng, onSave, onCancel }) {
   const [name, setName] = useState('')
@@ -756,7 +719,6 @@ function TrainLoader({ onComplete }) {
 }
 
 function App() {
-  const [authed, setAuthed] = useState(localStorage.getItem('scotland-auth') === 'true')
   const [pins, setPins] = useState([])
   const [addingAt, setAddingAt] = useState(null)
   const [selectedPin, setSelectedPin] = useState(null)
@@ -787,10 +749,8 @@ function App() {
   }, [])
 
   useEffect(() => {
-    if (authed) fetchPins()
-  }, [authed, fetchPins])
-
-  if (!authed) return <PasswordGate onUnlock={() => setAuthed(true)} />
+    fetchPins()
+  }, [fetchPins])
 
   function handleMapClick(latlng) {
     setSelectedPin(null)
